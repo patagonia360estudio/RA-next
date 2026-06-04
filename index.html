@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#021a10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Patagonia 360 — Guía turística interactiva con GPS y AR">
+  <title>Patagonia 360</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: HOME
+  ══════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+    <div class="home-bg-glow"></div>
+    <header class="home-header">
+      <img id="main-logo" src="assets/logo.png" alt="Patagonia 360" class="home-logo"
+        onerror="this.onerror=null;this.style.display='none';document.getElementById('logo-fallback').style.display='flex';">
+      <div id="logo-fallback" class="logo-fallback" style="display:none" aria-hidden="true">
+        <svg viewBox="0 0 96 96" width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="48" cy="48" r="45" stroke="#e8b84b" stroke-width="2.5" fill="#021a10"/>
+          <polygon points="48,16 26,60 70,60" fill="none" stroke="#e8b84b" stroke-width="2.2" stroke-linejoin="round"/>
+          <polygon points="28,60 14,80 44,80" fill="none" stroke="#22d68a" stroke-width="1.8" stroke-linejoin="round"/>
+          <polygon points="68,60 52,80 82,80" fill="none" stroke="#22d68a" stroke-width="1.8" stroke-linejoin="round"/>
+          <line x1="37" y1="42" x2="59" y2="42" stroke="#e8b84b" stroke-width="1" opacity=".55"/>
+          <line x1="34" y1="50" x2="62" y2="50" stroke="#e8b84b" stroke-width="1" opacity=".55"/>
+          <line x1="48" y1="26" x2="48" y2="60" stroke="#e8b84b" stroke-width="1" opacity=".55"/>
+          <path d="M18 82 A33 33 0 0 0 78 82" stroke="#e8b84b" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <polygon points="78,82 71,75 83,74" fill="#e8b84b"/>
+        </svg>
+        <div class="logo-fallback-text">
+          <span class="logo-name">Patagonia <em>360</em></span>
+          <span class="logo-sub">Estudio de Imágenes</span>
+        </div>
+      </div>
+      <p class="home-tagline">Guía turística AR · Bariloche</p>
+    </header>
+
+    <nav class="home-nav" role="navigation" aria-label="Menú principal">
+      <button class="mode-card" onclick="UI.go('screen-viewer-browse')" aria-label="Explorar recorridos">
+        <div class="mc-icon green">🧭</div>
+        <div class="mc-text">
+          <span class="mc-title">Explorar Recorridos</span>
+          <span class="mc-sub">GPS + AR en tiempo real</span>
+        </div>
+        <span class="mc-arrow">›</span>
+      </button>
+
+      <button class="mode-card gold" onclick="UI.go('screen-creator')" aria-label="Crear nuevo recorrido">
+        <div class="mc-icon gold">✏️</div>
+        <div class="mc-text">
+          <span class="mc-title">Crear Recorrido</span>
+          <span class="mc-sub">Fotos · EXIF · GPS automático</span>
+        </div>
+        <div class="mc-right">
+          <span class="badge badge-gold">NUEVO</span>
+          <span class="mc-arrow gold-text">›</span>
+        </div>
+      </button>
+
+      <button class="mode-card blue" onclick="UI.go('screen-gallery')" aria-label="Ver mis recorridos">
+        <div class="mc-icon blue">📚</div>
+        <div class="mc-text">
+          <span class="mc-title">Mis Recorridos</span>
+          <span class="mc-sub" id="gallery-home-sub">Sin recorridos guardados</span>
+        </div>
+        <span class="mc-arrow blue-text">›</span>
+      </button>
+    </nav>
+
+    <footer class="home-footer">Demo Comercial · Patagonia 360 · v6</footer>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: CREATOR — múltiples POIs
+  ══════════════════════════════════════════ -->
+  <div id="screen-creator" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="Creator.exitConfirm()" aria-label="Volver">← Volver</button>
+      <span class="topbar-title-center">Crear Recorrido</span>
+      <span class="badge badge-gold">Creador</span>
+    </div>
+    <div class="screen-body">
+
+      <!-- Nombre + descripción del recorrido -->
+      <div class="tour-meta-form">
+        <div class="tour-name-bar">
+          <span class="tour-name-icon" aria-hidden="true">◬</span>
+          <input class="tour-name-input" id="tour-name-input" type="text"
+            placeholder="Nombre del recorrido…" maxlength="60" aria-label="Nombre del recorrido">
+        </div>
+        <textarea class="input mt-4" id="tour-desc-input" placeholder="Descripción opcional…" rows="2"></textarea>
+      </div>
+
+      <!-- Mapa del creator -->
+      <div class="creator-map-wrap" role="application" aria-label="Mapa del recorrido">
+        <div id="creator-map"></div>
+        <div class="creator-map-hint-overlay">Tocá el mapa para agregar un punto</div>
+      </div>
+
+      <!-- Secuencia de POIs -->
+      <div class="section-header">
+        <p class="section-label">Secuencia del recorrido</p>
+        <span id="poi-count" class="poi-count-badge">0 puntos</span>
+      </div>
+
+      <!-- Lista drag-to-reorder -->
+      <div id="creator-poi-list" class="creator-poi-list">
+        <p id="creator-empty" class="empty-hint">Agregá el primer punto de interés.</p>
+      </div>
+
+      <!-- Botón + formulario inline -->
+      <button class="btn btn-add-poi" id="btn-add-poi" onclick="Creator.togglePoiForm()" aria-expanded="false">
+        <span aria-hidden="true">＋</span> Agregar Punto de Interés
+      </button>
+
+      <div id="add-poi-form" class="add-poi-form" aria-hidden="true">
+        <p class="form-section-title">NUEVO PUNTO</p>
+
+        <label class="lbl" for="photo-input">Foto del lugar</label>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('photo-input').click()">
+          <input type="file" id="photo-input" accept="image/*" onchange="Creator.onPhotoSelected(this)" aria-label="Subir foto">
+          <div class="drop-icon" aria-hidden="true">📷</div>
+          <p class="drop-text">Tocar para subir foto</p>
+          <p class="drop-sub">JPEG · PNG · HEIC — GPS leído del EXIF automáticamente</p>
+        </div>
+        <div id="photo-preview" class="photo-preview hidden">
+          <img id="preview-img" src="" alt="Preview">
+          <div class="photo-preview-bar">
+            <span class="exif-badge exif-none" id="exif-badge">Sin GPS EXIF</span>
+          </div>
+        </div>
+
+        <div class="form-fields">
+          <div class="form-group">
+            <label class="lbl" for="poi-name-input">Nombre *</label>
+            <input class="input" id="poi-name-input" type="text" placeholder="Ej: Mirador del Cerro">
+          </div>
+          <div class="form-group">
+            <label class="lbl" for="poi-cat-input">Categoría</label>
+            <select class="input" id="poi-cat-input">
+              <option value="viewpoint">🏔️ Mirador</option>
+              <option value="food">🍽️ Gastronomía</option>
+              <option value="nature">🌿 Naturaleza</option>
+              <option value="culture">🏛️ Cultura</option>
+              <option value="sport">🎿 Deporte</option>
+              <option value="hotel">🏨 Alojamiento</option>
+              <option value="other">📍 Otro</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="lbl" for="poi-lat-input">Latitud</label>
+              <input class="input" id="poi-lat-input" type="number" step="any" placeholder="-41.1335">
+            </div>
+            <div class="form-group">
+              <label class="lbl" for="poi-lng-input">Longitud</label>
+              <input class="input" id="poi-lng-input" type="number" step="any" placeholder="-71.3103">
+            </div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="Creator.useMyLocation()" type="button">
+            📍 Usar mi ubicación actual
+          </button>
+          <div class="form-group mt-8">
+            <label class="lbl" for="poi-desc-input">Descripción</label>
+            <textarea class="input" id="poi-desc-input" placeholder="Descripción breve…" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-gold flex-1" onclick="Creator.confirmAddPoi()">Confirmar Punto</button>
+          <button class="btn btn-outline btn-icon" onclick="Creator.cancelPoiForm()" aria-label="Cancelar">✕</button>
+        </div>
+      </div>
+
+      <!-- Distancias entre puntos -->
+      <div id="distances-summary" class="distances-summary hidden">
+        <p class="section-label">Distancias del recorrido</p>
+        <div id="distances-list"></div>
+        <div class="total-distance-row">
+          <span>Distancia total:</span>
+          <strong id="total-distance">0 km</strong>
+        </div>
+      </div>
+
+      <!-- Acciones finales -->
+      <div class="creator-actions">
+        <button class="btn btn-green" id="save-tour-btn" onclick="Creator.saveTour()" disabled>
+          💾 Guardar Recorrido
+        </button>
+        <button class="btn btn-outline" id="export-qr-btn" onclick="QR.openModal(Creator.getCurrentTour())" disabled>
+          ⊞ Exportar QR
+        </button>
+        <p id="save-hint" class="save-hint">Agregá al menos 1 punto para guardar</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: GALERÍA
+  ══════════════════════════════════════════ -->
+  <div id="screen-gallery" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="UI.go('screen-home')" aria-label="Volver">← Volver</button>
+      <span class="topbar-title-center">Mis Recorridos</span>
+      <span id="gallery-count-badge" class="badge badge-blue">0</span>
+    </div>
+    <div class="screen-body">
+      <div id="gallery-list" role="list"></div>
+      <p id="gallery-empty" class="empty-hint">No tenés recorridos guardados aún.</p>
+      <button class="btn btn-outline mt-8" onclick="UI.go('screen-creator')">＋ Crear nuevo recorrido</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: EXPLORAR — todos los recorridos públicos/guardados
+  ══════════════════════════════════════════ -->
+  <div id="screen-viewer-browse" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="UI.go('screen-home')" aria-label="Volver">← Volver</button>
+      <span class="topbar-title-center">Explorar</span>
+      <span class="badge badge-live">● En vivo</span>
+    </div>
+    <div class="screen-body">
+      <div id="browse-map-wrap" class="mini-map-decor" role="application" aria-label="Mapa de recorridos">
+        <div id="browse-map"></div>
+      </div>
+      <p class="section-label mt-8">Recorridos disponibles</p>
+      <div id="browse-list" role="list"></div>
+      <p id="browse-empty" class="empty-hint">No hay recorridos aún. ¡Creá el primero!</p>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: TOUR OVERVIEW — resumen antes de iniciar
+  ══════════════════════════════════════════ -->
+  <div id="screen-tour-overview" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="UI.go('screen-gallery')" id="overview-back-btn" aria-label="Volver">← Volver</button>
+      <span class="topbar-title-center" id="overview-tour-title">—</span>
+      <span class="badge badge-green" id="overview-poi-badge">0 pts</span>
+    </div>
+    <div class="screen-body">
+      <!-- Mapa con todos los POIs -->
+      <div id="overview-map-wrap" class="overview-map-wrap" role="application">
+        <div id="overview-map"></div>
+      </div>
+
+      <div class="card overview-meta-card">
+        <p id="overview-tour-desc" class="overview-desc">—</p>
+        <div class="overview-stats">
+          <div class="stat-chip">
+            <span class="stat-val" id="overview-poi-count">0</span>
+            <span class="stat-lbl">Puntos</span>
+          </div>
+          <div class="stat-chip">
+            <span class="stat-val" id="overview-total-dist">0 km</span>
+            <span class="stat-lbl">Distancia</span>
+          </div>
+          <div class="stat-chip">
+            <span class="stat-val" id="overview-est-time">0 min</span>
+            <span class="stat-lbl">Estimado</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de POIs del recorrido -->
+      <p class="section-label">Paradas del recorrido</p>
+      <div id="overview-poi-list" class="overview-poi-list"></div>
+
+      <button class="btn btn-green btn-lg mt-8" onclick="Viewer.startTour()">
+        🚀 Iniciar Recorrido
+      </button>
+      <button class="btn btn-outline mt-4" onclick="QR.openModal(Viewer.currentTour)">
+        ⊞ Compartir QR
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: NAVEGACIÓN GPS — un POI a la vez
+  ══════════════════════════════════════════ -->
+  <div id="screen-nav" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="GPS.stopNav(); UI.go('screen-tour-overview')" aria-label="Volver">← Tour</button>
+      <div id="nav-title" class="topbar-title-center">—</div>
+      <span id="gps-status" class="badge gps-wait" aria-live="polite">GPS…</span>
+    </div>
+    <div class="screen-body screen-body--nav">
+
+      <!-- Progreso del recorrido -->
+      <div class="tour-progress-bar">
+        <div class="progress-track">
+          <div class="progress-fill" id="nav-progress-fill" style="width:0%"></div>
+        </div>
+        <span class="progress-label" id="nav-progress-label">1 / 1</span>
+      </div>
+
+      <!-- Chip navegando -->
+      <div class="nav-chip">
+        <span class="dot-pulse" aria-hidden="true"></span>
+        Navegando
+      </div>
+
+      <!-- MAPA LEAFLET -->
+      <div id="map-wrap" role="application" aria-label="Mapa de navegación">
+        <div id="leaflet-map"></div>
+      </div>
+
+      <!-- Alerta proximidad -->
+      <div id="proximity-alert" class="proximity-alert hidden" role="alert" aria-live="assertive">
+        <span aria-hidden="true">⚠️</span>
+        <div>
+          <strong>¡Estás cerca!</strong>
+          <small>A menos de 50m del destino</small>
+        </div>
+        <button class="btn btn-ar btn-sm" onclick="AR.open()" aria-label="Abrir AR">AR →</button>
+      </div>
+
+      <!-- HUD distancias -->
+      <div class="dist-hud" role="status">
+        <div class="dist-card">
+          <span class="dist-label">Distancia</span>
+          <span class="dist-value" id="dist-val">—</span>
+        </div>
+        <div class="dist-card">
+          <span class="dist-label">Rumbo</span>
+          <span class="dist-value" id="bearing-val" style="font-size:13px">—</span>
+        </div>
+        <div class="dist-card">
+          <span class="dist-label">Precisión</span>
+          <span class="dist-value" id="acc-val" style="font-size:13px">—</span>
+        </div>
+      </div>
+
+      <!-- Flecha direccional -->
+      <div class="arrow-wrap">
+        <div class="arrow-ring">
+          <svg id="nav-arrow" width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M24 42 L24 8" stroke="var(--green)" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M12 20 L24 8 L36 20" stroke="var(--green)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="42" r="3" fill="var(--green)" opacity=".45"/>
+          </svg>
+        </div>
+        <span class="arrow-label" id="arrow-label">Calculando…</span>
+      </div>
+
+      <!-- Botones de acción nav -->
+      <div class="nav-actions">
+        <button class="btn btn-ar" onclick="AR.open()">◉ Vista AR</button>
+        <button class="btn btn-green" onclick="GPS.arrivedManual()">✓ Llegué</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: ARRIVAL — llegó al POI
+  ══════════════════════════════════════════ -->
+  <div id="screen-arrival" class="screen">
+    <div class="topbar">
+      <button class="btn-back" onclick="UI.go('screen-nav')" aria-label="Volver">← Mapa</button>
+      <span class="topbar-title-center">Llegaste</span>
+      <span class="badge badge-green" id="arrival-stop-badge">Parada 1</span>
+    </div>
+    <div class="screen-body">
+      <div class="arrival-hero">
+        <div class="arrival-img-wrap">
+          <img id="arrival-img" src="" alt="" class="arrival-img-real hidden">
+          <div id="arrival-img-placeholder" class="arrival-img-placeholder">
+            <span id="arrival-cat-emoji" class="arrival-cat-emoji">📍</span>
+          </div>
+        </div>
+        <span class="arrival-check">✓ Llegaste</span>
+        <h1 id="arr-title" class="arrival-title">—</h1>
+        <span class="badge badge-green" id="arr-category-badge">Punto</span>
+      </div>
+
+      <div class="card arrival-desc-card">
+        <p id="arr-desc" class="arrival-desc">—</p>
+      </div>
+
+      <!-- Chips de info -->
+      <div class="arrival-chips">
+        <div class="arr-chip">
+          <span class="arr-chip-lbl">Parada</span>
+          <span class="arr-chip-val" id="arr-stop-num">1/1</span>
+        </div>
+        <div class="arr-chip">
+          <span class="arr-chip-lbl">Próxima</span>
+          <span class="arr-chip-val" id="arr-next-dist">—</span>
+        </div>
+      </div>
+
+      <button class="btn btn-green btn-lg" id="arr-next-btn" onclick="Viewer.nextPoi()">
+        Siguiente parada →
+      </button>
+      <button class="btn btn-outline mt-4" id="arr-finish-btn" onclick="Viewer.finishTour()" style="display:none">
+        🏁 Finalizar recorrido
+      </button>
+      <button class="btn btn-outline mt-4" onclick="UI.go('screen-tour-overview')">
+        Ver mapa del recorrido
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: FINISH
+  ══════════════════════════════════════════ -->
+  <div id="screen-finish" class="screen">
+    <div class="screen-body screen-body--center">
+      <div class="finish-hero">
+        <div class="finish-icon">🏁</div>
+        <h1 class="finish-title">¡Recorrido completo!</h1>
+        <p class="finish-sub" id="finish-tour-name">—</p>
+      </div>
+      <div class="card finish-stats">
+        <div class="stat-row">
+          <span>Puntos visitados</span>
+          <strong id="finish-pois">0</strong>
+        </div>
+        <div class="stat-row">
+          <span>Distancia total</span>
+          <strong id="finish-dist">—</strong>
+        </div>
+      </div>
+      <button class="btn btn-green btn-lg" onclick="UI.go('screen-home')">← Inicio</button>
+      <button class="btn btn-outline mt-4" onclick="QR.openModal(Viewer.currentTour)">⊞ Compartir</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       PANTALLA: AR VIEW — fullscreen overlay
+  ══════════════════════════════════════════ -->
+  <div id="screen-ar" class="screen-ar hidden" role="dialog" aria-modal="true" aria-label="Vista AR">
+    <video id="ar-video" autoplay playsinline muted aria-hidden="true"></video>
+
+    <div class="ar-hud">
+      <!-- Topbar AR -->
+      <div class="ar-topbar">
+        <button class="ar-btn-close" onclick="AR.close()" aria-label="Cerrar AR">✕ Cerrar AR</button>
+        <div class="ar-compass" role="status" aria-label="Brújula">
+          <div class="compass-track">
+            <div class="compass-dirs" id="compass-dirs"></div>
+            <div class="compass-needle"></div>
+          </div>
+        </div>
+        <span class="ar-badge-live">◉ AR LIVE</span>
+      </div>
+
+      <!-- Esquinas encuadre -->
+      <div class="ar-corner tl"></div>
+      <div class="ar-corner tr"></div>
+      <div class="ar-corner bl"></div>
+      <div class="ar-corner br"></div>
+      <div class="ar-scanline"></div>
+
+      <!-- Flecha direccional -->
+      <div id="ar-direction-arrow" class="ar-direction-arrow" aria-label="Dirección POI">↑</div>
+
+      <!-- Mini HUD — esquina superior derecha, no tapa cámara -->
+      <div class="ar-mini-hud">
+        <div class="ar-mini-poi-name" id="ar-poi-name-mini">—</div>
+        <div class="ar-mini-dist" id="ar-dist-mini">— m</div>
+        <div class="ar-mini-bearing" id="ar-bearing-mini">—</div>
+      </div>
+
+      <!-- POI card flotante — solo cuando está cerca -->
+      <div id="ar-poi-card" class="ar-poi-card hidden">
+        <img id="ar-poi-img" src="" alt="" class="ar-poi-img hidden">
+        <div class="ar-poi-body">
+          <div id="ar-poi-icon" class="ar-poi-icon">📍</div>
+          <div id="ar-poi-name" class="ar-poi-name">—</div>
+          <div id="ar-poi-dist" class="ar-poi-dist">— m</div>
+        </div>
+      </div>
+
+      <!-- Bottom HUD mínimo -->
+      <div class="ar-bottom-hud">
+        <div class="ar-chips">
+          <div class="ar-chip"><span class="ar-chip-lbl">GPS</span><span id="ar-gps" class="ar-chip-val green">●●●●</span></div>
+          <div class="ar-chip"><span class="ar-chip-lbl">Señal</span><span id="ar-signal" class="ar-chip-val green">Buena</span></div>
+        </div>
+        <button class="btn btn-green" onclick="AR.close(); GPS.arrivedManual()">✓ Llegué aquí</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       MODAL: QR CODE
+  ══════════════════════════════════════════ -->
+  <div id="qr-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="QR del recorrido">
+    <div class="modal-backdrop" onclick="QR.closeModal()"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Compartir Recorrido</h2>
+        <button class="modal-close" onclick="QR.closeModal()" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="qr-canvas-wrap" class="qr-canvas-wrap">
+        <canvas id="qr-canvas"></canvas>
+      </div>
+      <p id="qr-tour-name" class="qr-tour-name">—</p>
+      <p class="qr-hint">Escaneá para abrir el recorrido completo en AR</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline flex-1" onclick="QR.copyURL()" id="copy-url-btn">⊂ Copiar URL</button>
+        <button class="btn btn-green flex-1" onclick="QR.closeModal()">Listo</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       TOAST
+  ══════════════════════════════════════════ -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toast-icon" class="toast-icon">✓</span>
+    <span id="toast-text" class="toast-text">Mensaje</span>
+  </div>
+
+
+  <!-- Scripts externos -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/exifr@7.1.3/dist/lite.umd.js"></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <!-- Módulos propios -->
+  <script src="js/ui.js"></script>
+  <script src="js/gps.js"></script>
+  <script src="js/ar.js"></script>
+  <script src="js/creator.js"></script>
+  <script src="js/gallery.js"></script>
+  <script src="js/qr.js"></script>
+  <script src="js/viewer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
